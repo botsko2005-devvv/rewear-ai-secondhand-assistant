@@ -4,7 +4,7 @@ import logging
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from ai_provider import AIError, MockProvider
 from models import ListingRequest, ListingResponse
@@ -15,6 +15,7 @@ logger = logging.getLogger("rewear")
 
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.5"))
 BANNED_WORDS = ["зброя", "зброю", "пістолет", "наркотик"]
+
 
 app = FastAPI(title="ReWear AI API", version="0.1.0")
 provider = MockProvider()
@@ -45,6 +46,8 @@ def create_listing(req: ListingRequest):
     if any(w in text for w in BANNED_WORDS):
         return error(422, "forbidden_item", "Цей тип товарів заборонено до продажу.")
 
+    if "__bad_json__" in text:  # тестовий гачок: імітує зламану відповідь сервера
+        return Response(content="це не json {", media_type="application/json")
     try:
         result = provider.generate(req.description, req.condition, req.size)
     except TimeoutError:
