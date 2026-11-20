@@ -26,7 +26,7 @@ CONDITION_LABEL = {
 class MockProvider:
     """Простий AI на правилах: визначає категорію, ціну, заголовок і опис."""
 
-    def generate(self, description: str, condition, size: Optional[str]) -> dict:
+    def generate(self, description: str, condition, size: Optional[str], platform=None) -> dict:
         text = description.lower()
 
         # Тестові "гачки" для перевірки помилок (потрібні для тестових сценаріїв)
@@ -36,6 +36,7 @@ class MockProvider:
             raise TimeoutError("simulated timeout")
 
         cond = condition.value if hasattr(condition, "value") else condition
+        plat = platform.value if hasattr(platform, "value") else (platform or "OLX")
 
         category: Optional[str] = None
         base_price = 0
@@ -63,12 +64,34 @@ class MockProvider:
         if size and "розмір" not in text:
             title += f", розмір {size}"
 
-        ad_text = (
-            f"{description.strip().rstrip('.')}. "
-            f"Стан: {CONDITION_LABEL[cond]}. "
-            f"Категорія: {category}. "
-            f"Орієнтовна ціна: {price_min}–{price_max} грн."
-        )
+        if plat == "eBay":
+            cond_text = {"new": "New", "excellent": "Excellent", "good": "Good", "fair": "Fair"}.get(cond, cond)
+            ad_text = (
+                f"{description.strip().rstrip('.')}. "
+                f"Condition: {cond_text}. "
+                f"Category: {category}. "
+                f"Estimated Price: {price_min}–{price_max} UAH. "
+                f"International shipping available. Fast dispatch."
+            )
+        elif plat == "Grailed":
+            cond_text = {"new": "Brand New / 10/10", "excellent": "Lightly Used / 9/10", "good": "Used / 8/10", "fair": "Worn / 7/10"}.get(cond, cond)
+            size_str = f" / Size {size}" if size else ""
+            ad_text = (
+                f"{description.strip().rstrip('.')}{size_str}. "
+                f"Condition: {cond_text}. "
+                f"Category: {category}. "
+                f"Price: {price_min}–{price_max} UAH. "
+                f"#streetwear #archive #grailed #secondhand"
+            )
+        else:  # OLX
+            cond_text = CONDITION_LABEL.get(cond, cond)
+            ad_text = (
+                f"{description.strip().rstrip('.')}. "
+                f"Стан: {cond_text}. "
+                f"Категорія: {category}. "
+                f"Орієнтовна ціна: {price_min}–{price_max} грн. "
+                f"Безпечна доставка OLX або самовивіз."
+            )
 
         confidence = 0.9 if len(description) > 30 else 0.7
         return {

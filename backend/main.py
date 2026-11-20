@@ -49,7 +49,7 @@ def create_listing(req: ListingRequest):
     if "__bad_json__" in text:  # тестовий гачок: імітує зламану відповідь сервера
         return Response(content="це не json {", media_type="application/json")
     try:
-        result = provider.generate(req.description, req.condition, req.size)
+        result = provider.generate(req.description, req.condition, req.size, req.platform)
     except TimeoutError:
         logger.warning("AI timeout")
         return error(504, "ai_timeout", "AI не відповів вчасно. Спробуйте ще раз.")

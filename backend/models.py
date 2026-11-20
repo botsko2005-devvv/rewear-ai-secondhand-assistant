@@ -10,10 +10,17 @@ class Condition(str, Enum):
     fair = "fair"
 
 
+class Platform(str, Enum):
+    OLX = "OLX"
+    eBay = "eBay"
+    Grailed = "Grailed"
+
+
 class ListingRequest(BaseModel):
     description: str = Field(..., max_length=500)
     condition: Condition
     size: Optional[str] = Field(None, max_length=10)
+    platform: Platform = Platform.OLX
 
     @field_validator("description")
     @classmethod
