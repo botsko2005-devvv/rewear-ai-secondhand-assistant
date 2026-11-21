@@ -11,6 +11,24 @@ CATEGORIES = {
     "Аксесуари": (["сумк", "рюкзак", "ремінь", "шапк", "шарф", "годинник"], 350),
 }
 
+BRAND_TIERS = {
+    "luxury": (["gucci", "prada", "chanel", "louis vuitton", "balenciaga", "saint laurent", "dior", "hermes", "burberry", "brioni", "rick owens"], 1.8),
+    "mid_range": (["zara", "h&m", "nike", "adidas", "puma", "levi's", "carhartt", "mammut", "tommy hilfiger", "calvin klein", "mango"], 1.0),
+    "mass_market": (["bershka", "pull&bear", "stradivarius", "primark", "defacto", "lc waikiki"], 0.75),
+}
+
+DEFECT_KEYWORDS = {
+    "потертість": 0.9,
+    "потертості": 0.9,
+    "scuff": 0.9,
+    "пляма": 0.85,
+    "плями": 0.85,
+    "stain": 0.85,
+    "дірка": 0.7,
+    "дірочка": 0.7,
+    "hole": 0.7,
+}
+
 CONDITION_FACTOR = {"new": 1.0, "excellent": 0.8, "good": 0.6, "fair": 0.4}
 CONDITION_LABEL = {
     "new": "новий",
@@ -42,6 +60,28 @@ class MockListingProvider:
                 category, base_price = name, price
                 break
 
+        # Brand tier resolution
+        brand_tier = None
+        brand_multiplier = 1.0
+        if command.brand_tier and command.brand_tier in BRAND_TIERS:
+            brand_tier = command.brand_tier
+            brand_multiplier = BRAND_TIERS[brand_tier][1]
+        else:
+            for tier, (brands, mult) in BRAND_TIERS.items():
+                if any(b in text for b in brands):
+                    brand_tier = tier
+                    brand_multiplier = mult
+                    break
+            if not brand_tier:
+                brand_tier = "mid_range"
+                brand_multiplier = 1.0
+
+        # Defect multiplier resolution
+        defect_multiplier = 1.0
+        for kw, mult in DEFECT_KEYWORDS.items():
+            if kw in text:
+                defect_multiplier *= mult
+
         if category is None:
             return ListingDraft(
                 status="low_confidence",
@@ -54,9 +94,15 @@ class MockListingProvider:
                 description=None,
                 hint="Не вдалося визначити річ. Уточніть опис: вкажіть тип речі, бренд і стан.",
                 confidence=0.3,
+                brand_tier=brand_tier,
+                suggestions=[
+                    "Уточнити тип речі (куртка, кросівки тощо)",
+                    "Вказати бренд (наприклад, Zara, Nike)",
+                    "Описати стан речі та дефекти",
+                ],
             )
 
-        price = base_price * CONDITION_FACTOR.get(cond, 0.6)
+        price = base_price * CONDITION_FACTOR.get(cond, 0.6) * brand_multiplier * defect_multiplier
         price_min = int(round(price * 0.85 / 10) * 10)
         price_max = int(round(price * 1.15 / 10) * 10)
 
@@ -106,4 +152,6 @@ class MockListingProvider:
             description=ad_text,
             hint=None,
             confidence=confidence,
+            brand_tier=brand_tier,
+            suggestions=None,
         )

@@ -22,6 +22,7 @@ class ListingCommand:
     condition: Condition | str
     size: Optional[str] = None
     platform: Optional[Platform | str] = Platform.OLX
+    brand_tier: Optional[str] = None
 
 
 @dataclass
@@ -36,3 +37,5 @@ class ListingDraft:
     description: Optional[str] = None
     hint: Optional[str] = None
     confidence: float = 0.0
+    brand_tier: Optional[str] = None
+    suggestions: Optional[list[str]] = None

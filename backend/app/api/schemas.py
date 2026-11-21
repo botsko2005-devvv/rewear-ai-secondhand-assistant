@@ -8,6 +8,7 @@ class ListingRequest(BaseModel):
     condition: Condition
     size: Optional[str] = Field(None, max_length=10)
     platform: Optional[Platform] = Platform.OLX
+    brand_tier: Optional[str] = Field(None, max_length=20)
 
     @field_validator("description")
     @classmethod
@@ -23,6 +24,7 @@ class ListingRequest(BaseModel):
             condition=self.condition,
             size=self.size,
             platform=self.platform or Platform.OLX,
+            brand_tier=self.brand_tier,
         )
 
 
@@ -37,6 +39,8 @@ class ListingResponse(BaseModel):
     description: Optional[str] = None
     hint: Optional[str] = None
     confidence: float
+    brand_tier: Optional[str] = None
+    suggestions: Optional[list[str]] = None
 
     @classmethod
     def from_draft(cls, draft: ListingDraft) -> "ListingResponse":
@@ -51,6 +55,8 @@ class ListingResponse(BaseModel):
             description=draft.description,
             hint=draft.hint,
             confidence=draft.confidence,
+            brand_tier=draft.brand_tier,
+            suggestions=draft.suggestions,
         )
 
 
