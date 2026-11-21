@@ -3,30 +3,65 @@
 Мобільний AI-помічник продавця секонд-хенду та вінтажного одягу для маркетплейсів **OLX, eBay, Grailed**.
 
 ## Ідея та призначення
-Приватні продавці та реселери витрачають багато часу на підготовку оголошень: вибір категорії, оцінку вартості, написання заголовка й опису під формат конкретного майданчика. **ReWear AI** автоматизує цей процес: користувач вводить короткий опис речі, обирає стан, розмір та майданчик публікації (`OLX`, `eBay` або `Grailed`), а система визначає категорію, рекомендує діапазон ціни у гривнях (`UAH`) і формує готовий текст оголошення з можливістю копіювання в один клік.
+Приватні продавці та реселери витрачають багато часу на підготовку оголошень: вибір категорії, оцінку вартості, написання заголовка й опису під формат конкретного майданчика. **ReWear AI** автоматизує цей процес: користувач вводить короткий опис речі, обирає стан, розмір та майданчик публікації (`OLX`, `eBay` або `Grailed`), а система визначає категорію, рекомендує діапазон ціни у гривнях (`UAH`) і формує готовий текст оголошення з можливістю копіювання в один клік. Усі успішно згенеровані оголошення зберігаються локально на пристрої у базі даних Room для перегляду історії, деталей та повторного копіювання.
 
 ## Технологічний стек
-- **Mobile (`mobile/`):** Android, Kotlin, Jetpack Compose (Material 3), ViewModel, Retrofit + Gson + OkHttp.
-- **Backend (`backend/`):** Python 3.10+, FastAPI, Pydantic, Uvicorn, `python-dotenv`.
-- **AI-компонент (`backend/ai_provider.py`):** детермінований правиловий `MockProvider` (класифікація за ключовими словами, розрахунок ціни за станом, адаптація тексту під формат `OLX` / `eBay` / `Grailed`).
 
+- **Mobile (`mobile/`):** Android, Kotlin, Jetpack Compose (Material 3), `AndroidViewModel`, Room Database (`2.7.1`) + KSP (`2.2.10-2.0.2`), Retrofit + Gson + OkHttp.
+- **Backend (`backend/`):** Python 3.10+, FastAPI, Pydantic, Uvicorn, `httpx`, `python-dotenv` (шарувата архітектура з DI через `FastAPI Depends`).
+- **AI-компонент (`backend/app/infrastructure/providers/`):** провайдери за контрактом `ListingProvider (Protocol)` — детермінований правиловий `MockListingProvider`, `RealListingProvider` та резервний `FallbackListingProvider`.
+- 
 ## Структура репозиторію та Knowledge Base
 ```text
 rewear-ai-secondhand-assistant/
-├── backend/                  # FastAPI сервер, Pydantic-моделі, AI-логіка та тести
-├── mobile/                   # Android-застосунок (Kotlin + Jetpack Compose)
-├── docs/                     # Knowledge Base проєкту та скріншоти тестування
-│   ├── project-overview.md   # Огляд проєкту, сценарій та межі MVP
-│   ├── requirements.md       # Статус функціональних і нефункціональних вимог (відносно ЛР1)
-│   ├── architecture.md       # Клієнт-серверна архітектура та стани UI
-│   ├── api-contract.md       # Специфікація REST API та формат помилок
-│   ├── ai-component.md       # Логіка AI-класифікації та ціноутворення
-│   ├── testing.md            # Обов'язкові інтеграційні тести та перевірка AI
-│   ├── known-limitations.md  # Відомі обмеження поточної версії
-│   ├── decisions.md          # Архітектурні рішення та виправлені дефекти
-│   ├── ai-instructions.md    # Правила роботи для AI-асистента (coding-агента)
-│   └── screenshots/          # Скріншоти екранів застосунку та роботи агента
-├── GEMINI.md                 # Точка входу правил для Gemini CLI
+├── backend/                              # FastAPI сервер (шарувата архітектура ЛР5)
+│   ├── main.py                           # Точка входу для uvicorn (реекспорт app)
+│   ├── requirements.txt                  # Залежності Python
+│   ├── test_ai.py                        # 7 регресійних сценаріїв генерації
+│   ├── test_architecture.py              # 6 архітектурних автотестів ЛР5 (unittest)
+│   └── app/
+│       ├── main.py                       # Фабрика create_app() та X-Request-ID middleware
+│       ├── core/
+│       │   └── config.py                 # Централізовані налаштування Settings (.env)
+│       ├── domain/
+│       │   ├── models.py                 # Доменні моделі ListingCommand, ListingDraft
+│       │   ├── errors.py                 # Доменні винятки DomainError
+│       │   └── interfaces.py             # Інтерфейс ListingProvider (Protocol)
+│       ├── infrastructure/providers/
+│       │   ├── mock_provider.py          # Правиловий MockListingProvider
+│       │   ├── real_provider.py          # Реальний LLM-провайдер (httpx.AsyncClient)
+│       │   └── fallback_provider.py      # Резервний FallbackListingProvider
+│       ├── services/
+│       │   └── listing_service.py        # Прикладний сервіс ListingService
+│       └── api/
+│           ├── schemas.py                # Pydantic DTO (ListingRequest, ListingResponse)
+│           ├── error_handlers.py         # Централізована обробка помилок (422/502/504)
+│           ├── dependencies.py           # FastAPI Depends (composition root)
+│           └── routes/
+│               └── listing.py            # Тонкий роутер GET /health та POST /api/v1/listing
+├── mobile/                               # Android-застосунок (Kotlin + Jetpack Compose)
+│   └── app/src/main/java/com/rewear/ai/
+│       ├── MainActivity.kt               # Головний екран, вкладки PrimaryTabRow, історія та діалоги
+│       ├── ListingViewModel.kt           # ViewModel з інтеграцією HistoryRepository
+│       ├── ApiService.kt                 # Retrofit-клієнт із таймаутами 10 с
+│       ├── ListingModels.kt              # DTO-моделі JSON, доменна модель Listing та UiState
+│       └── data/                         # Локальний шар даних (Room Database, ЛР4)
+│           ├── HistoryEntity.kt          # SQLite-таблиця listing_history
+│           ├── HistoryDao.kt             # DAO-інтерфейс запитів до бази
+│           ├── AppDatabase.kt            # Singleton RoomDatabase
+│           └── HistoryRepository.kt      # Обгортка над DAO для ViewModel
+├── docs/                                 # Knowledge Base проєкту та скріншоти тестування
+│   ├── project-overview.md               # Огляд проєкту, сценарій та межі MVP
+│   ├── requirements.md                   # Статус функціональних і нефункціональних вимог
+│   ├── architecture.md                   # Клієнт-серверна архітектура, стани UI та Room-шар
+│   ├── api-contract.md                   # Специфікація REST API та формат помилок
+│   ├── ai-component.md                   # Логіка AI-класифікації та ціноутворення
+│   ├── testing.md                        # Інтеграційні, AI та архітектурні тести
+│   ├── known-limitations.md              # Відомі обмеження поточної версії
+│   ├── decisions.md                      # Архітектурні рішення та виправлені дефекти
+│   ├── ai-instructions.md                # Правила роботи для AI-асистента (coding-агента)
+│   └── screenshots/                      # Скріншоти екранів застосунку та роботи агента
+├── GEMINI.md                             # Точка входу правил для Gemini CLI
 ├── .gitignore
 └── README.md
 ```
@@ -43,6 +78,7 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 - Перевірка стану сервісу: `http://127.0.0.1:8000/health` → `{"status":"ok"}`
 - Інтерактивна документація Swagger UI: `http://127.0.0.1:8000/docs`
 - Запуск автотестів AI-компонента: `python test_ai.py`
+- Запуск архітектурних тестів ЛР5 (без зовнішнього API): `python test_architecture.py`
 
 ### 2. Запуск Mobile (Android Studio)
 1. Відкрийте папку `mobile/` в Android Studio та дочекайтеся синхронізації Gradle.
@@ -79,7 +115,49 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 }
 ```
 Усі помилки (`422`, `502`, `504`) повертаються у єдиному форматі `{"error": "код", "message": "повідомлення"}` без технічного `stack trace`.
+---
 
+## Звіт із Лабораторної роботи 5 (Варіант Б — FastAPI Backend Architecture)
+
+### 1. Обраний варіант і сценарій
+- **Варіант:** **Б (FastAPI Backend Architecture)** — реорганізація серверної частини без зміни HTTP-контракту та без регресії для мобільного клієнта.
+- **Функціональний сценарій:** генерація картки оголошення (`POST /api/v1/listing`).
+
+### 2. Три проблеми початкової реалізації
+1. **Змішана відповідальність у HTTP-роутері (`backend/main.py`):** обробник `create_listing` одночасно валідував запит, містив тестові хуки (`__ai_error__`, `__bad_json__`), викликав AI-провайдер, перехоплював винятки та формував JSON-помилки.
+2. **Жорстка залежність від конкретного провайдера (`backend/main.py`, `backend/ai_provider.py`):** роутер напряму інстанціював `MockProvider()` без абстрактного інтерфейсу, що унеможливлювало підміну провайдера через DI або тестування з fake-реалізацією.
+3. **Відсутність типізованих доменних моделей і централізованої конфігурації:** `MockProvider.generate(...)` повертав нетипізований словник `dict`, а налаштування (`AI_PROVIDER`, `AI_MODEL`, `AI_API_KEY`, `AI_TIMEOUT_SEC`) не були винесені в окремий клас конфігурації.
+
+### 3. Нова шарувата структура `backend/app/`
+- **`core/config.py`:** централізований клас `Settings` для читання параметрів провайдера, моделі, ключа API, таймауту та прапорця fallback із `.env`.
+- **`domain/`:** чисті доменні моделі `ListingCommand` і `ListingDraft` (`models.py`), ієрархія доменних винятків `DomainError` (`errors.py`) та контракт `ListingProvider(Protocol)` (`interfaces.py`).
+- **`infrastructure/providers/`:** взаємозамінні реалізації `MockListingProvider` (правилова логіка), `RealListingProvider` (зовнішній LLM API через `httpx.AsyncClient`) та `FallbackListingProvider`.
+- **`services/listing_service.py`:** прикладний сервіс `ListingService`, незалежний від FastAPI та Pydantic, який отримує `ListingProvider` через конструктор.
+- **`api/`:** Pydantic-схеми та мапери (`schemas.py`), централізовані обробники винятків 422/502/504 (`error_handlers.py`), фабрики залежностей `FastAPI Depends` (`dependencies.py`) та тонкий роутер (`routes/listing.py`).
+
+### 4. Контрольні розширення та результати автотестів
+- **`FallbackListingProvider`:** провайдер-обгортка, яка при збої основного провайдера (`AiProviderDomainError` або `AiTimeoutDomainError`) автоматично перемикається на резервний провайдер і додає примітку в `hint`.
+- **Наскрізний `X-Request-ID`:** HTTP middleware у `app/main.py` додає заголовок `X-Request-ID` у кожну відповідь та фіксує його у серверних логах.
+- **Автоматизоване тестування (без реального зовнішнього API):**
+   - `python backend/test_architecture.py` — **6/6 тестів `ok`** (перевірка `ListingService`, підміна залежностей через `app.dependency_overrides` для `504`/`502`, обробка помилок `RealListingProvider`, робота `FallbackListingProvider`, заголовок `X-Request-ID` та зворотна сумісність).
+   - `python backend/test_ai.py` — **7/7 сценаріїв `Збіг`**.
+
+**Висновок:** чисте розділення відповідальностей між роутером, прикладним сервісом, доменним контрактом та інфраструктурними провайдерами з DI через `FastAPI Depends` підвищило модульність, безпеку помилок і тестованість без реального зовнішнього API. Компромісом є збереження правилового `MockListingProvider` за замовчуванням для локальної роботи без платного ключа LLM API.
+
+---
+
+## Звіт із Лабораторної роботи 4 (Локальна історія через Room Database)
+
+### 1. Вибір технологій та архітектура
+- **Room Database (`2.7.1`)** разом із кодогенератором **KSP (`2.2.10-2.0.2`)** обрано як постійне SQLite-сховище Android, сумісне з Kotlin 2.2.10 та Android Gradle Plugin 9.5.1.
+- Шар даних ізольовано від UI у пакеті `com.rewear.ai.data` (`HistoryEntity`, `HistoryDao`, `AppDatabase`, `HistoryRepository`) з доступом через `AndroidViewModel`.
+
+### 2. Структура локального запису (`HistoryEntity`)
+Таблиця `listing_history` зберігає: `id` (`Long`, автоінкремент), `createdAt` (`"yyyy-MM-dd HH:mm"`), `timestamp` (`Long`), `status` (`"готово"`), параметри входу (`description`, `condition`, `size`, `platform`) та результат AI (`category`, `title`, `resultDescription`, `priceMin`, `priceMax`, `currency`, `confidence`).
+
+### 3. Правило збереження та фільтрація даних
+- Запис додається до Room **тільки** коли `response.isSuccessful == true` і `body.status == "ok"`.
+- **Що свідомо НЕ зберігається:** мережеві помилки, таймаути, помилки парсингу JSON (`JsonParseException`, `MalformedJsonException`), HTTP-помилки `422` / `502` / `504`, відповіді зі статусом `low_confidence`, а також секрети, токени чи технічні `stack trace`.
 ---
 
 ## Звіт із AI-Assisted розробки (ЛР3)
@@ -113,8 +191,9 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
    *Результат:* додано вибір майданчика на головному екрані Android-застосунку; функціонал перевірено на емуляторі для `OLX`, `eBay` та `Grailed`.
 
 ## Відомі обмеження та подальший розвиток
-- AI-логіка базується на словнику ключових слів українською мовою без реальної LLM та аналізу фотографій.
-- Згенеровані оголошення не зберігаються після перезапуску застосунку (локальна історія на базі **Room Database** запланована на **ЛР4**).
-- Впровадження DI-фреймворку та підключення зовнішнього LLM API заплановано на **ЛР5**.
+
+- AI-логіка за замовчуванням (`AI_PROVIDER=mock`) базується на словнику ключових слів українською мовою без виклику платного LLM API та аналізу фотографій.
+- Відсутність офлайн-черги та хмарної синхронізації: локальна історія зберігається лише на пристрої у SQLite (Room).
+- У мобільному клієнті впровадження DI-фреймворку (Hilt) та кешування відповідей у `RealListingProvider` залишаються як напрямки подальшого розвитку.
 
 **Висновок:** використання проєктної Knowledge Base (`docs/` та `GEMINI.md`) усунуло галюцинації coding-агента щодо неіснуючих маршрутів і типу AI-моделі, дозволило одразу закласти зворотну сумісність API (`platform = "OLX"`) та розбити реалізацію на безпечні ізольовані кроки з автотестами.

@@ -38,3 +38,15 @@
 
 ## Виявлений і виправлений дефект під час тестування
 Під час виконання тесту №6 («Неправильний JSON») виявлено, що бібліотека Gson генерує виняток `MalformedJsonException`, який успадковується від `IOException`. Через це блок `catch (e: IOException)` у `ListingViewModel.kt` перехоплював його першим і показував повідомлення про відсутність мережі. Дефект усунуто перенесенням `catch (e: MalformedJsonException)` перед `catch (e: IOException)`.
+
+## Архітектурні автотести Лабораторної роботи 5 (`backend/test_architecture.py`)
+Запуск без зовнішньої мережі та реального LLM API: `python backend/test_architecture.py`
+
+| № | Назва тесту | Що перевіряється | Результат |
+|---|---|---|---|
+| 1 | `test_1_service_with_mock_provider_platforms` | Робота `ListingService` + `MockListingProvider` для `OLX`, `eBay`, `Grailed` без FastAPI | `ok` |
+| 2 | `test_2_di_override_timeout_returns_504` | Підміна залежності через `FastAPI Depends` на `TimeoutFakeProvider` → HTTP `504` (`ai_timeout`) | `ok` |
+| 3 | `test_3_di_override_provider_error_returns_502` | Підміна залежності через `FastAPI Depends` на `FailingFakeProvider` → HTTP `502` (`ai_error`) | `ok` |
+| 4 | `test_4_real_provider_missing_key_and_invalid_json` | Обробка відсутності `AI_API_KEY` та зламаного JSON у `RealListingProvider` | `ok` |
+| 5 | `test_5_fallback_provider_recovers_on_primary_failure` | Контрольне розширення `FallbackListingProvider`: перемикання на резервний провайдер при збої основного | `ok` |
+| 6 | `test_6_request_id_middleware_and_backward_compatibility` | Заголовок `X-Request-ID` у відповіді, зворотна сумісність без `platform` та `422` при забороненому слові | `ok` |

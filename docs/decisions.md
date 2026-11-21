@@ -15,3 +15,8 @@
 ## 4. Пріоритет перехоплення `MalformedJsonException` у `ListingViewModel`
 - **Рішення:** поставити `catch (e: MalformedJsonException)` вище за `catch (e: IOException)`.
 - **Обґрунтування:** у Gson `MalformedJsonException` є підкласом `IOException`; правильний порядок блоків гарантує точне повідомлення користувачу при пошкодженій відповіді сервера.
+## Архітектурний рефакторинг Backend (ЛР5 — Варіант Б)
+- **Причина змін:** у початковій версії `backend/main.py` змішувалися HTTP-маршрутизація, тестові хуки, пряме створення `MockProvider` та обробка помилок.
+- **Рішення:** виділено шари `core/config.py`, `domain/` (`ListingCommand`, `ListingDraft`, `DomainError`, `ListingProvider(Protocol)`), `infrastructure/providers/` (`MockListingProvider`, `RealListingProvider`, `FallbackListingProvider`), `services/listing_service.py` та `api/` (`schemas.py`, `error_handlers.py`, `dependencies.py`, `routes/listing.py`).
+- **Переваги:** прикладна логіка ізольована від FastAPI та зовнішнього HTTP-клієнта `httpx`, провайдери підмінюються через `FastAPI Depends`, а всі сценарії покриті автотестами без доступу до зовнішнього API.
+- **Компроміси:** синхронний `TestClient` залишається в `test_ai.py` для зворотної сумісності регресійних перевірок; у `RealListingProvider` реалізовано базовий виклик OpenAI-сумісного API без кешування відповідей.
