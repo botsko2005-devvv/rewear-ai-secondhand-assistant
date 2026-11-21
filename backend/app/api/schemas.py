@@ -1,26 +1,13 @@
-from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator
-
-
-class Condition(str, Enum):
-    new = "new"
-    excellent = "excellent"
-    good = "good"
-    fair = "fair"
-
-
-class Platform(str, Enum):
-    OLX = "OLX"
-    eBay = "eBay"
-    Grailed = "Grailed"
+from app.domain.models import Condition, Platform, ListingCommand, ListingDraft
 
 
 class ListingRequest(BaseModel):
     description: str = Field(..., max_length=500)
     condition: Condition
     size: Optional[str] = Field(None, max_length=10)
-    platform: Platform = Platform.OLX
+    platform: Optional[Platform] = Platform.OLX
 
     @field_validator("description")
     @classmethod
@@ -29,6 +16,14 @@ class ListingRequest(BaseModel):
         if not v:
             raise ValueError("Опис не може бути порожнім")
         return v
+
+    def to_command(self) -> ListingCommand:
+        return ListingCommand(
+            description=self.description,
+            condition=self.condition,
+            size=self.size,
+            platform=self.platform or Platform.OLX,
+        )
 
 
 class ListingResponse(BaseModel):
@@ -42,6 +37,21 @@ class ListingResponse(BaseModel):
     description: Optional[str] = None
     hint: Optional[str] = None
     confidence: float
+
+    @classmethod
+    def from_draft(cls, draft: ListingDraft) -> "ListingResponse":
+        return cls(
+            status=draft.status,
+            category=draft.category,
+            condition=draft.condition,
+            price_min=draft.price_min,
+            price_max=draft.price_max,
+            currency=draft.currency,
+            title=draft.title,
+            description=draft.description,
+            hint=draft.hint,
+            confidence=draft.confidence,
+        )
 
 
 class ErrorResponse(BaseModel):
