@@ -9,6 +9,7 @@ class Settings:
     AI_MODEL: str = os.getenv("AI_MODEL", "gpt-4o-mini")
     AI_API_KEY: str = os.getenv("AI_API_KEY", "")
     AI_TIMEOUT_SEC: float = float(os.getenv("AI_TIMEOUT_SEC", "10.0"))
+    AI_FALLBACK_ENABLED: bool = os.getenv("AI_FALLBACK_ENABLED", "false").lower() == "true"
 
 
 settings = Settings()
