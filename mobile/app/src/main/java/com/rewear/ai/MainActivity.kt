@@ -41,11 +41,18 @@ private val CONDITIONS = listOf(
     "fair" to "Задовільний"
 )
 
+private val PLATFORMS = listOf(
+    "OLX" to "OLX",
+    "eBay" to "eBay",
+    "Grailed" to "Grailed"
+)
+
 @Composable
 fun ListingScreen(vm: ListingViewModel = viewModel()) {
     var description by rememberSaveable { mutableStateOf("") }
     var condition by rememberSaveable { mutableStateOf("good") }
     var size by rememberSaveable { mutableStateOf("") }
+    var platform by rememberSaveable { mutableStateOf("OLX") }
 
     val state = vm.uiState
 
@@ -75,6 +82,20 @@ fun ListingScreen(vm: ListingViewModel = viewModel()) {
             modifier = Modifier.fillMaxWidth()
         )
 
+        Text("Майданчик публікації", style = MaterialTheme.typography.titleSmall)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            PLATFORMS.forEach { (value, label) ->
+                FilterChip(
+                    selected = platform == value,
+                    onClick = { platform = value },
+                    label = { Text(label) }
+                )
+            }
+        }
+
         Text("Стан", style = MaterialTheme.typography.titleSmall)
         CONDITIONS.forEach { (value, label) ->
             Row(
@@ -101,7 +122,7 @@ fun ListingScreen(vm: ListingViewModel = viewModel()) {
         )
 
         Button(
-            onClick = { vm.generate(description, condition, size) },
+            onClick = { vm.generate(description, condition, size, platform) },
             enabled = state !is UiState.Loading,
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -137,7 +158,7 @@ fun ListingScreen(vm: ListingViewModel = viewModel()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Помилка", style = MaterialTheme.typography.titleMedium)
                     Text(state.message)
-                    OutlinedButton(onClick = { vm.generate(description, condition, size) }) {
+                    OutlinedButton(onClick = { vm.generate(description, condition, size, platform) }) {
                         Text("Повторити")
                     }
                 }

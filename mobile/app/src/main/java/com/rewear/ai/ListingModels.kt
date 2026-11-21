@@ -6,7 +6,8 @@ import com.google.gson.annotations.SerializedName
 data class ListingRequestDto(
     val description: String,
     val condition: String,
-    val size: String? = null
+    val size: String? = null,
+    val platform: String = "OLX"
 )
 
 data class ListingResponseDto(

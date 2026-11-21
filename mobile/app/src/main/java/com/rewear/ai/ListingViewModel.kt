@@ -18,7 +18,7 @@ class ListingViewModel : ViewModel() {
     var uiState by mutableStateOf<UiState>(UiState.Idle)
         private set
 
-    fun generate(description: String, condition: String, size: String) {
+    fun generate(description: String, condition: String, size: String, platform: String = "OLX") {
         val text = description.trim()
 
         // Клієнтська валідація: на backend такий запит не йде
@@ -37,7 +37,8 @@ class ListingViewModel : ViewModel() {
                 val request = ListingRequestDto(
                     description = text,
                     condition = condition,
-                    size = size.trim().ifEmpty { null }
+                    size = size.trim().ifEmpty { null },
+                    platform = platform
                 )
                 val response = ApiClient.api.createListing(request)
                 if (response.isSuccessful) {
