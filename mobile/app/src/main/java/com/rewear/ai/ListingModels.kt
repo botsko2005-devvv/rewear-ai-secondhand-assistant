@@ -7,7 +7,8 @@ data class ListingRequestDto(
     val description: String,
     val condition: String,
     val size: String? = null,
-    val platform: String = "OLX"
+    val platform: String = "OLX",
+    @SerializedName("brand_tier") val brandTier: String? = null
 )
 
 data class ListingResponseDto(
@@ -20,7 +21,9 @@ data class ListingResponseDto(
     val title: String?,
     val description: String?,
     val hint: String?,
-    val confidence: Double?
+    val confidence: Double?,
+    @SerializedName("brand_tier") val brandTier: String? = null,
+    val suggestions: List<String>? = null
 )
 
 data class ErrorDto(
@@ -36,7 +39,8 @@ data class Listing(
     val currency: String,
     val title: String,
     val description: String,
-    val confidence: Double
+    val confidence: Double,
+    val brandTier: String? = null
 )
 
 // Стани екрана
@@ -44,6 +48,6 @@ sealed class UiState {
     object Idle : UiState()
     object Loading : UiState()
     data class Success(val listing: Listing) : UiState()
-    data class NoResult(val hint: String) : UiState()
+    data class NoResult(val hint: String, val suggestions: List<String> = emptyList()) : UiState()
     data class Error(val message: String) : UiState()
 }

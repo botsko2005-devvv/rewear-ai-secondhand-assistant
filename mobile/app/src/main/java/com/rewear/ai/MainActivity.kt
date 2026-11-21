@@ -50,6 +50,13 @@ private val PLATFORMS = listOf(
     "Grailed" to "Grailed"
 )
 
+private val BRAND_TIERS = listOf(
+    null to "Авто",
+    "mass_market" to "Мас-маркет",
+    "mid_range" to "Середній",
+    "luxury" to "Люкс"
+)
+
 @Composable
 fun MainScreen(vm: ListingViewModel = viewModel()) {
     var selectedTab by rememberSaveable { mutableStateOf(0) }
@@ -114,6 +121,20 @@ fun ListingScreen(vm: ListingViewModel) {
             modifier = Modifier.fillMaxWidth()
         )
 
+        Text("Сегмент бренду", style = MaterialTheme.typography.titleSmall)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            BRAND_TIERS.forEach { (value, label) ->
+                FilterChip(
+                    selected = vm.selectedBrandTier == value,
+                    onClick = { vm.setBrandTier(value) },
+                    label = { Text(label) }
+                )
+            }
+        }
+
         Text("Майданчик публікації", style = MaterialTheme.typography.titleSmall)
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -175,9 +196,26 @@ fun ListingScreen(vm: ListingViewModel) {
             is UiState.Success -> ResultCard(state.listing)
 
             is UiState.NoResult -> Card(modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Результату немає", style = MaterialTheme.typography.titleMedium)
                     Text(state.hint)
+                    if (state.suggestions.isNotEmpty()) {
+                        Text("Підказки:", style = MaterialTheme.typography.labelMedium)
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            state.suggestions.forEach { suggestion ->
+                                SuggestionChip(
+                                    onClick = {
+                                        description = if (description.isBlank()) suggestion else "$description, $suggestion"
+                                        vm.applySuggestion(suggestion)
+                                    },
+                                    label = { Text(suggestion) }
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -206,6 +244,9 @@ fun ResultCard(listing: Listing) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Категорія: ${listing.category}", style = MaterialTheme.typography.titleMedium)
             Text("Ціна: ${listing.priceMin}–${listing.priceMax} грн")
+            if (!listing.brandTier.isNullOrEmpty()) {
+                Text("Сегмент бренду: ${listing.brandTier}", style = MaterialTheme.typography.bodySmall)
+            }
             HorizontalDivider()
             Text("Заголовок", style = MaterialTheme.typography.labelMedium)
             Text(listing.title, style = MaterialTheme.typography.titleSmall)

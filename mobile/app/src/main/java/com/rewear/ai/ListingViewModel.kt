@@ -40,8 +40,24 @@ class ListingViewModel(application: Application) : AndroidViewModel(application)
     var uiState by mutableStateOf<UiState>(UiState.Idle)
         private set
 
+    var selectedBrandTier by mutableStateOf<String?>(null)
+        private set
+
+    private var lastDescription = ""
+    private var lastCondition = "good"
+    private var lastSize = ""
+    private var lastPlatform = "OLX"
+
+    fun setBrandTier(tier: String?) {
+        selectedBrandTier = tier
+    }
+
     fun generate(description: String, condition: String, size: String, platform: String = "OLX") {
         val text = description.trim()
+        lastDescription = text
+        lastCondition = condition
+        lastSize = size
+        lastPlatform = platform
 
         // Клієнтська валідація: на backend такий запит не йде
         if (text.isEmpty()) {
@@ -60,7 +76,8 @@ class ListingViewModel(application: Application) : AndroidViewModel(application)
                     description = text,
                     condition = condition,
                     size = size.trim().ifEmpty { null },
-                    platform = platform
+                    platform = platform,
+                    brandTier = selectedBrandTier
                 )
                 val response = ApiClient.api.createListing(request)
                 if (response.isSuccessful) {
@@ -109,6 +126,12 @@ class ListingViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun applySuggestion(suggestion: String) {
+        val updatedDescription = if (lastDescription.isBlank()) suggestion else "$lastDescription, $suggestion"
+        lastDescription = updatedDescription
+        generate(updatedDescription, lastCondition, lastSize, lastPlatform)
+    }
+
     fun deleteHistoryItem(id: Long) {
         viewModelScope.launch {
             repository.deleteById(id)
@@ -124,7 +147,10 @@ class ListingViewModel(application: Application) : AndroidViewModel(application)
     // DTO (JSON) -> внутрішня модель
     private fun mapResponse(dto: ListingResponseDto): UiState {
         if (dto.status == "low_confidence") {
-            return UiState.NoResult(dto.hint ?: "Уточніть опис речі.")
+            return UiState.NoResult(
+                hint = dto.hint ?: "Уточніть опис речі.",
+                suggestions = dto.suggestions ?: emptyList()
+            )
         }
         val category = dto.category
         val title = dto.title
@@ -144,7 +170,8 @@ class ListingViewModel(application: Application) : AndroidViewModel(application)
                 currency = dto.currency ?: "UAH",
                 title = title,
                 description = description,
-                confidence = dto.confidence ?: 0.0
+                confidence = dto.confidence ?: 0.0,
+                brandTier = dto.brandTier
             )
         )
     }
