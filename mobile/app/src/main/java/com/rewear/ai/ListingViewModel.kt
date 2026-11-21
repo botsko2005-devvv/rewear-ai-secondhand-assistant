@@ -1,19 +1,41 @@
 package com.rewear.ai
 
+import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.google.gson.JsonParseException
 import com.google.gson.stream.MalformedJsonException
+import com.rewear.ai.data.AppDatabase
+import com.rewear.ai.data.HistoryEntity
+import com.rewear.ai.data.HistoryRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.IOException
 import java.net.SocketTimeoutException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-class ListingViewModel : ViewModel() {
+class ListingViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val repository: HistoryRepository by lazy {
+        val dao = AppDatabase.getDatabase(application).historyDao()
+        HistoryRepository(dao)
+    }
+
+    val historyList: StateFlow<List<HistoryEntity>> = repository.allHistory
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     var uiState by mutableStateOf<UiState>(UiState.Idle)
         private set
@@ -43,8 +65,31 @@ class ListingViewModel : ViewModel() {
                 val response = ApiClient.api.createListing(request)
                 if (response.isSuccessful) {
                     val body = response.body()
-                    if (body == null) UiState.Error("Сервер повернув порожню відповідь.")
-                    else mapResponse(body)
+                    if (body == null) {
+                        UiState.Error("Сервер повернув порожню відповідь.")
+                    } else if (body.status == "ok") {
+                        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                        val entity = HistoryEntity(
+                            createdAt = dateFormat.format(Date()),
+                            timestamp = System.currentTimeMillis(),
+                            status = "готово",
+                            description = text,
+                            condition = condition,
+                            size = size.trim(),
+                            platform = platform,
+                            category = body.category ?: "",
+                            title = body.title ?: "",
+                            resultDescription = body.description ?: "",
+                            priceMin = body.priceMin ?: 0,
+                            priceMax = body.priceMax ?: 0,
+                            currency = body.currency ?: "UAH",
+                            confidence = body.confidence ?: 0.0
+                        )
+                        repository.insert(entity)
+                        mapResponse(body)
+                    } else {
+                        mapResponse(body)
+                    }
                 } else {
                     UiState.Error(parseError(response.errorBody()?.string(), response.code()))
                 }
@@ -61,6 +106,18 @@ class ListingViewModel : ViewModel() {
             } catch (e: Exception) {
                 UiState.Error("Сталася невідома помилка. Спробуйте ще раз.")
             }
+        }
+    }
+
+    fun deleteHistoryItem(id: Long) {
+        viewModelScope.launch {
+            repository.deleteById(id)
+        }
+    }
+
+    fun clearAllHistory() {
+        viewModelScope.launch {
+            repository.clearAll()
         }
     }
 
