@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.*
@@ -122,15 +123,21 @@ fun ListingScreen(vm: ListingViewModel) {
         )
 
         Text("Сегмент бренду", style = MaterialTheme.typography.titleSmall)
-        Row(
+        LazyRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            BRAND_TIERS.forEach { (value, label) ->
+            items(BRAND_TIERS) { (value, label) ->
                 FilterChip(
                     selected = vm.selectedBrandTier == value,
                     onClick = { vm.setBrandTier(value) },
-                    label = { Text(label) }
+                    label = {
+                        Text(
+                            text = label,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
                 )
             }
         }
