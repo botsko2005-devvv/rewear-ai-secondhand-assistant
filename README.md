@@ -10,7 +10,7 @@
 - **Mobile (`mobile/`):** Android, Kotlin, Jetpack Compose (Material 3), `AndroidViewModel`, Room Database (`2.7.1`) + KSP (`2.2.10-2.0.2`), Retrofit + Gson + OkHttp.
 - **Backend (`backend/`):** Python 3.10+, FastAPI, Pydantic, Uvicorn, `httpx`, `python-dotenv` (шарувата архітектура з DI через `FastAPI Depends`).
 - **AI-компонент (`backend/app/infrastructure/providers/`):** провайдери за контрактом `ListingProvider (Protocol)` — детермінований правиловий `MockListingProvider`, `RealListingProvider` та резервний `FallbackListingProvider`.
-- 
+
 ## Структура репозиторію та Knowledge Base
 ```text
 rewear-ai-secondhand-assistant/
